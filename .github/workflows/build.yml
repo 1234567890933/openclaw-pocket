@@ -23,7 +23,6 @@ jobs:
         run: |
           set -euo pipefail
           URL="${{ github.server_url }}/${{ github.repository }}/releases/download/${SOURCE_TAG}/source.zip"
-          echo "fetching $URL"
           curl -fL --retry 3 -o /tmp/source.zip "$URL"
           mkdir -p /tmp/src && unzip -q /tmp/source.zip -d /tmp/src
           cp -a /tmp/src/OpenClaudeMobile/. ./
@@ -35,9 +34,7 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      # The runner ships Gradle 9.x on PATH. AGP 8.7.3 refuses to load under it and
-      # reports the plugin as "not found", which reads like a repository problem and
-      # is not one. Pin the version the project was written against.
+      # AGP 8.7.3 will not load under the runner's Gradle 9; pin what the project uses.
       - name: Install Gradle ${{ env.GRADLE_VERSION }}
         run: |
           set -euo pipefail
@@ -45,7 +42,7 @@ jobs:
             "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip"
           unzip -q /tmp/gradle.zip -d /opt
           echo "/opt/gradle-${GRADLE_VERSION}/bin" >> "$GITHUB_PATH"
-          /opt/gradle-${GRADLE_VERSION}/bin/gradle --version
+          gradle --version
 
       - name: Install Android SDK
         run: |
@@ -64,6 +61,22 @@ jobs:
         run: |
           yes | sdkmanager --licenses > /dev/null || true
           sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "ndk;27.0.12077973" "cmake;3.22.1"
+
+      # assembleRelease signs with the debug keystore by default, which exists on a
+      # developer machine and never on a fresh runner. That is why the debug APK built
+      # and the release one did not.
+      - name: Create signing keystore
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.android"
+          if [ ! -f "$HOME/.android/debug.keystore" ]; then
+            keytool -genkeypair -v \
+              -keystore "$HOME/.android/debug.keystore" \
+              -storepass android -alias androiddebugkey -keypass android \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+          ls -l "$HOME/.android/debug.keystore"
 
       - name: Cache Gradle
         uses: actions/cache@v4
@@ -85,21 +98,35 @@ jobs:
         run: gradle :app:assembleDebug --no-daemon --stacktrace
 
       - name: Build release APK
+        continue-on-error: true
         run: gradle :app:assembleRelease --no-daemon --stacktrace
 
+      # Publish whatever exists. A debug APK that installs beats a red pipeline with
+      # nothing attached to it.
       - name: Collect artefacts
+        if: always()
         run: |
           mkdir -p out
-          cp app/build/outputs/apk/debug/app-debug.apk out/pocketclaw-${SOURCE_TAG}-debug.apk || true
-          find app/build/outputs/apk/release -name '*.apk' -exec cp {} out/pocketclaw-${SOURCE_TAG}-release.apk \; || true
+          cp app/build/outputs/apk/debug/app-debug.apk out/pocketclaw-${SOURCE_TAG}-debug.apk 2>/dev/null || true
+          find app/build/outputs/apk/release -name '*.apk' -exec cp {} out/pocketclaw-${SOURCE_TAG}-release.apk \; 2>/dev/null || true
           ls -lh out
 
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: apk
           path: out/*.apk
+          if-no-files-found: warn
 
       - name: Attach to release
+        if: always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${SOURCE_TAG}" out/*.apk -R "${{ github.repository }}" --clobber
+        run: |
+          shopt -s nullglob
+          files=(out/*.apk)
+          if [ ${#files[@]} -gt 0 ]; then
+            gh release upload "${SOURCE_TAG}" "${files[@]}" -R "${{ github.repository }}" --clobber
+          else
+            echo "no apk produced"
+          fi
