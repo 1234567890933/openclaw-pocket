@@ -1,83 +1,76 @@
 # OpenClaw Pocket
 
-An Android client for the open-source [OpenClaw](https://github.com/openclaw/openclaw) agent — the gateway runs *on the phone*, not on a laptop the phone connects to.
+An Android host for the open-source [OpenClaw](https://github.com/openclaw/openclaw) gateway
+coding agent. The agent runs inside a bundled Linux userland on the phone — no
+Termux, no root, no PC. The app is a normal chat interface, not a terminal.
 
-## What this is
+This repository is the Android application. It does **not** contain OpenClaude's
+own source: the CLI is installed at first boot from a runtime bundle you publish,
+and the licence and attribution for it stay with its authors.
 
-Upstream OpenClaw is a Node process that acts as a local control plane: sessions, tools, events, channels. Its desktop and mobile clients connect to that gateway over the network. On Android the gateway had no home — you ran it on a computer and paired the phone to it.
+## Status
 
-This project puts the gateway in the phone:
+Step 3. The app now **hosts** the OpenClaw gateway on the phone instead of only
+connecting to one, adds a tool belt the agent calls back into, a five-bot team with
+an orchestrator, and a glass composer as the single visual flourish.
 
-```
-Compose UI
-   |
-   +-- GatewayClient --> GatewayHost (proot + Debian + Node) --> openclaw gateway
-   |                        loopback, supervised, restarts on crash
-   |
-   +-- DirectModelClient --> provider HTTPS (OpenAI-compatible / Gemini)
-   |                          no gateway, no userland, no download
-   |
-   +-- LocalEngine --> llama.cpp via JNI (stub in the shipped APK)
-```
+| Area | State |
+|---|---|
+| Conversation UI, glass composer, bot strip, gateway pill | complete |
+| Gateway host on the phone (proot + Node, loopback only) | complete, needs the runtime bundle |
+| Gateway client (frames, heartbeat, outbox, reconnect) | complete |
+| Tool bridge + six tools (files, code, search, http, browser) | complete |
+| Five bots + orchestrator + supervisor | complete |
+| On-device inference (vendored llama.cpp) | complete, needs a GGUF |
+| One-tap installer | complete |
+| Chat storage, vault, gate, native core | complete |
+| OpenClaw package | not vendored — pinned install, see `third_party/openclaw.lock.json` |
+| Channels (WhatsApp, Telegram, …) | upstream plugins, not wired |
+| Attachments, voice, provider editor, approvals UI | stubs that say so |
 
-Three transports on purpose. The gateway is the full experience; the direct
-provider path is the one that always works; the on-device engine is the one that
-needs no network at all.
+`docs/STEP-03.md` for what changed, `PROJECT-STATE.md` for where it stands,
+`docs/architecture-poster.png` for the whole thing on one page.
 
-## Modules
-
-| Module | Contains | Compose? |
-|---|---|---|
-| `:core` | gateway client, tools, bots, storage, security, providers | no |
-| `:app` | Compose UI, activity, services | yes |
-
-The split is not decoration: `:core` compiles in a fraction of the time and can be
-tested on a plain JVM, which is what made verification possible on a 2 GB machine.
-
-## What works
-
-- **Chat** with streaming, history, per-message actions
-- **Direct provider path** — add a key, talk to OpenAI-compatible or Gemini endpoints
-- **Gateway path** — Node, proot and the agent bundle ship in the APK; the Debian
-  userland is fetched at build time
-- **Tool belt** — files, code execution, web search, HTTP, browser (WebView)
-- **Bot team** — five personas with tool allow-lists and an orchestrator
-- **Guard** — prompt-injection and jailbreak screening, fail-closed, code-locked
-- **Device gates** — root detection, RAM/storage floors, arm64 only
-- **24 fps cap**, thermal governor, picture-in-picture
-
-## Build
+## Quick start
 
 ```bash
-export ANDROID_HOME=/path/to/sdk
-./scripts/fetch-runtime-payloads.sh   # ~250 MB of binaries, not in git
-gradle :app:assembleRelease
+git clone <your fork>
+cd OpenClaudeMobile
+cp local.properties.example local.properties   # point sdk.dir at your SDK
+./gradlew :app:assembleDebug
 ```
 
-The payloads are deliberately not committed: they are binaries, they change
-independently of the source, and a 250 MB blob in git is a blob nobody can review.
-`scripts/fetch-runtime-payloads.sh` resolves them, and the CI workflow runs it.
+Then follow `docs/BUILD.md` to set up the OAuth client id and the runtime bundle.
+Without the bundle the app installs, shows the bootstrap screen, and stops there —
+which is the honest failure mode rather than a fake "ready".
 
-## Source
-
-The full tree (193 source files across Kotlin, Java, C++, Python, Node, TypeScript,
-Rust, Go, SQL and shell) is attached to every release as `source.zip`, because the
-build environment that produced it could not push a tree of that size through the
-API. Unzip it and run the two commands above.
-
-## Layout
+## How it fits together
 
 ```
-app/            Compose UI, activity, services
-core/           gateway, tools, bots, storage, security (no Compose)
-bridge/         Python and Node bridges for LAN/desktop mode
-third_party/    vendored llama.cpp (pinned, CPU-only)
-tools/          model selection, bundle verifier, policy engine
-devtools/       TypeScript status dashboard
-docs/           architecture, build, providers, security, roadmap
+┌─────────────────────────────────────────────┐
+│ Compose UI  (chat, history, settings)       │
+├─────────────────────────────────────────────┤
+│ AgentRepository  ── JSON lines ──┐          │
+├──────────────────────────────────┼──────────┤
+│ SessionRunner (pipes, timeouts)  │          │
+├──────────────────────────────────┼──────────┤
+│ proot  ──►  Debian userland  ──► node cli   │
+│            (rootfs in filesDir)             │
+└─────────────────────────────────────────────┘
 ```
+
+Full detail in `docs/ARCHITECTURE.md`.
+
+## Why the app is small and the runtime is large
+
+Hand-written source for an app like this is a few megabytes. The 500–700 MB that
+comparable projects quote is the embedded Linux userland, the Node and Python
+runtimes, and the offline toolset — binaries, not source. Padding a repository to
+a size target would only make it slower to clone and harder to review. What
+actually matters is that the payload is verified, resumable and optional per
+component, which is what `BootstrapManager` does.
 
 ## Licence
 
-MIT for this client. OpenClaw itself is MIT, (c) the OpenClaw Foundation. This is an
-independent client and is not affiliated with or endorsed by the upstream project.
+Application code: MIT. See `docs/LICENSING.md` for what that does and does not
+cover — in particular, OpenClaude's own licensing and Anthropic's trademarks.

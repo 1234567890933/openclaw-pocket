@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  PocketClaw mark.
+
+  Engineering notes, because an icon is a piece of engineering:
+  - One idea only. At 24 dp a viewer gets about 100 ms and a 12 px blob, so the mark
+    has to read as a silhouette with no internal detail.
+  - Three tapered claw strokes cut a negative-space wedge. The cut is what makes it
+    recognisable; a solid shape at this size is just a smudge.
+  - Colour: warm white on ink, one teal accent. Warm-white-on-dark survives both
+    light and dark launchers; a blue mark disappears on a blue wallpaper.
+  - Nothing is borrowed: no letterform, no rounded-square-with-a-letter, no gradient
+    that only works on one background.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- claw 1 -->
+    <path
+        android:pathData="M34,30 C46,42 52,54 54,68 C56,54 62,42 74,30 C66,44 60,58 54,74 C48,58 42,44 34,30 Z"
+        android:fillColor="#FFF6F1E7" />
+    <!-- claw 2, shorter, offset right -->
+    <path
+        android:pathData="M60,34 C68,44 72,54 73,64 C74,54 78,44 86,34 C80,46 76,58 73,70 C70,58 66,46 60,34 Z"
+        android:fillColor="#FFE6DCCB" />
+    <!-- claw 3, shorter, offset left -->
+    <path
+        android:pathData="M22,34 C30,44 34,54 35,64 C36,54 40,44 48,34 C42,46 38,58 35,70 C32,58 28,46 22,34 Z"
+        android:fillColor="#FFE6DCCB" />
+    <!-- accent: the point where the claws converge -->
+    <path
+        android:pathData="M54,76m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0"
+        android:fillColor="#FF2FB6A8" />
+</vector>

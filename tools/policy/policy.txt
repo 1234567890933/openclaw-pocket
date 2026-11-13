@@ -1,0 +1,40 @@
+# Default sandbox policy.
+#
+# Verdicts: allow, confirm, deny. Longest matching prefix wins.
+# The app reads this at build time and bakes it into res/raw/policy.txt.
+
+default confirm
+
+# read-only inspection is always fine
+allow ls
+allow cat
+allow head
+allow tail
+allow grep
+allow rg
+allow find
+allow wc
+allow pwd
+allow echo
+allow git status
+allow git diff
+allow git log
+allow git branch
+
+# writes inside the workspace need a nod
+confirm git commit
+confirm git checkout
+confirm npm install
+confirm pip install
+confirm make
+
+# network and privilege are not negotiable
+deny curl
+deny wget
+deny ssh
+deny scp
+deny su
+deny sudo
+deny pm
+deny am
+deny settings

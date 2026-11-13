@@ -1,0 +1,7 @@
+# Deliberately tiny. The bridge runs inside a proot userland on a phone, so every
+# dependency is a download the user waits for and a package we must keep patched.
+# The agent loop itself uses only the standard library.
+#
+# Optional, only for the cloud deployment shape:
+#   uvloop>=0.20 ; sys_platform != "win32"
+#   websockets>=13

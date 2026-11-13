@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OpenClaude Mobile · install status</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Install status</h1>
+      <p id="device">reading device…</p>
+    </header>
+
+    <section id="verdict" class="verdict">…</section>
+
+    <section class="meter">
+      <div class="bar"><div id="fill" class="fill"></div></div>
+      <p id="bytes">0 of 0</p>
+    </section>
+
+    <ul id="list" class="list"></ul>
+  </main>
+
+  <script type="module">
+    async function refresh() {
+      const response = await fetch("/api/status");
+      const data = await response.json();
+
+      const verdict = document.getElementById("verdict");
+      const fill = document.getElementById("fill");
+      const bytes = document.getElementById("bytes");
+      const list = document.getElementById("list");
+      const device = document.getElementById("device");
+
+      if (data.error) {
+        verdict.textContent = "No snapshot yet — export one from the app.";
+        verdict.className = "verdict warn";
+        return;
+      }
+
+      device.textContent = data.device;
+      verdict.textContent = data.verdict;
+      verdict.className = "verdict " + (data.failures.length ? "bad" : data.fraction >= 1 ? "good" : "");
+      fill.style.width = Math.round(data.fraction * 100) + "%";
+      bytes.textContent = data.done + " of " + data.total;
+
+      list.innerHTML = data.components
+        .map((c) => `<li class="row ${c.state}"><span class="dot"></span><span class="label">${c.label}</span><span class="state">${c.state}</span></li>`)
+        .join("");
+    }
+
+    refresh();
+    setInterval(refresh, 2000);
+  </script>
+</body>
+</html>

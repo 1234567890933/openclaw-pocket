@@ -1,0 +1,22 @@
+{
+  "package": "openclaw",
+  "version": "2026.11.3",
+  "license": "MIT",
+  "repository": "https://github.com/openclaw/openclaw",
+  "node": ">=24.16.0",
+  "entry": "node_modules/openclaw/openclaw.mjs",
+  "gatewaySubcommand": [
+    "gateway",
+    "run"
+  ],
+  "note": "Not vendored: the repository is ~14 GB and the published npm package is the supported distribution. The runtime bundle installs it at build time via scripts/fetch-openclaw.sh, so the phone gets the same artefact everyone else gets, at a version we pin.",
+  "vendoredHere": false,
+  "installedBy": "scripts/fetch-openclaw.sh",
+  "protocol": {
+    "stream": "/v1/stream",
+    "health": "/v1/health",
+    "info": "/v1/info",
+    "envelope": "newline-free JSON frames over WebSocket, {id, type, ...}",
+    "clientVersion": 1
+  }
+}

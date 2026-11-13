@@ -1,0 +1,20 @@
+# Baseline profile.
+#
+# These are the classes on the cold-start path: Application -> MainActivity ->
+# Compose host -> the first screen. Shipping them pre-compiled removes the
+# interpretation cost of the first launch, which on a low-end phone is the single
+# largest win available without changing a line of app code.
+#
+# Regenerate with a Macrobenchmark run on a real device; until then this is a
+# conservative hand-written list, which is better than nothing and safe to ship.
+
+HSPLcom/openclaude/mobile/OpenClaudeApp;->onCreate()V
+HSPLcom/openclaude/mobile/MainActivity;->onCreate(Landroid/os/Bundle;)V
+HSPLcom/openclaude/mobile/di/ServiceLocator;->init(Landroid/content/Context;)V
+HSPLcom/openclaude/mobile/ui/RootScreenKt;->RootScreen(Landroidx/compose/runtime/Composer;I)V
+HSPLcom/openclaude/mobile/ui/gemini/GeminiHomeKt;->GeminiHome(Lcom/openclaude/mobile/ui/gemini/GeminiViewModel;Landroidx/compose/runtime/Composer;I)V
+HSPLcom/openclaude/mobile/ui/splash/IntroSplashKt;->IntroSplash(Lkotlin/jvm/functions/Function0;Landroidx/compose/runtime/Composer;I)V
+HSPLcom/openclaude/mobile/ui/theme/ThemeKt;->OpenClaudeTheme(ZLkotlin/jvm/functions/Function2;Landroidx/compose/runtime/Composer;II)V
+HSPLcom/openclaude/mobile/perf/PerformanceProfile;-><init>(Landroid/content/Context;)V
+HSPLcom/openclaude/mobile/data/chat/ChatDatabase_Impl;
+HSPLcom/openclaude/mobile/data/secure/Vault;-><init>(Landroid/content/Context;)V

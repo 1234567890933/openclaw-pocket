@@ -1,0 +1,10 @@
+[package]
+name = "ocm-policy"
+version = "0.1.0"
+edition = "2021"
+description = "Sandbox policy evaluator for OpenClaude Mobile"
+license = "MIT"
+
+[dependencies]
+# No dependencies on purpose: this binary is run in CI and by release tooling, and
+# a supply chain with zero crates is a supply chain that cannot be poisoned.

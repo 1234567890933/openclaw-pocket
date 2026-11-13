@@ -1,0 +1,14 @@
+{
+  "name": "ocm-agent-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Node host for OpenClaude Mobile, used for desktop and LAN deployment",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "OCM_BRIDGE_TOKEN=devtoken node server.mjs"
+  }
+}

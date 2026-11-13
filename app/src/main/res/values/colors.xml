@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ink">#FF0B0D12</color>
+    <color name="ink_soft">#FF141821</color>
+    <color name="amber">#FFE8A33D</color>
+    <color name="amber_deep">#FFC77B1F</color>
+    <color name="mist">#FFB7C0D0</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="ic_launcher_background">#FF0B0D12</color>
+</resources>

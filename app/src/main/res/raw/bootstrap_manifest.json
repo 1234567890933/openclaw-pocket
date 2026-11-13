@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 2,
+  "channel": "stable",
+  "baseUrl": "",
+  "totalBytes": 153020382,
+  "note": "Every required payload ships inside the APK: Node, proot, the OpenClaw agent and the Debian userland. The build fetches them (scripts/fetch-runtime-payloads.sh) because they are 250 MB of binaries, not because the app needs a network.",
+  "components": [
+    {
+      "id": "proot-aarch64",
+      "label": "proot sandbox",
+      "file": "proot-arm64",
+      "bytes": 1020382,
+      "sha256": "",
+      "extractTo": "runtime/root",
+      "required": true,
+      "stage": 1,
+      "bundled": true,
+      "url": ""
+    },
+    {
+      "id": "node-runtime",
+      "label": "Node.js 24 runtime",
+      "file": "node-arm64.pkg",
+      "bytes": 45000000,
+      "sha256": "",
+      "extractTo": "runtime/rootfs/opt/node",
+      "required": true,
+      "stage": 2,
+      "bundled": true,
+      "url": ""
+    },
+    {
+      "id": "userland-rootfs",
+      "label": "Debian userland (supply your own)",
+      "file": "debian-bookworm-arm64-minirootfs.tar.gz",
+      "url": "",
+      "bytes": 108000000,
+      "sha256": "",
+      "extractTo": "runtime/rootfs",
+      "required": false,
+      "stage": 3,
+      "bundled": false
+    },
+    {
+      "id": "openclaude-bundle",
+      "label": "OpenClaw agent bundle",
+      "file": "openclaw-bundle.pkg",
+      "url": "",
+      "bytes": 107000000,
+      "sha256": "",
+      "extractTo": "runtime/rootfs/opt/openclaw",
+      "required": true,
+      "stage": 4,
+      "bundled": true
+    },
+    {
+      "id": "python-runtime",
+      "label": "Python 3.12 + wheels",
+      "file": "python312-arm64-bundle.tar.gz",
+      "url": "",
+      "bytes": 62000000,
+      "sha256": "",
+      "extractTo": "runtime/rootfs/opt/python",
+      "required": false,
+      "stage": 5,
+      "bundled": false
+    },
+    {
+      "id": "offline-tools",
+      "label": "Offline toolset and assets",
+      "file": "tools-assets.tar.gz",
+      "url": "",
+      "bytes": 209000000,
+      "sha256": "",
+      "extractTo": "runtime/rootfs/opt/tools",
+      "required": false,
+      "stage": 6,
+      "bundled": false
+    },
+    {
+      "id": "model-index",
+      "label": "Provider and model index",
+      "file": "model-index.tar.gz",
+      "url": "",
+      "bytes": 146000000,
+      "sha256": "",
+      "extractTo": "runtime/rootfs/opt/models",
+      "required": false,
+      "stage": 7,
+      "bundled": false
+    }
+  ]
+}

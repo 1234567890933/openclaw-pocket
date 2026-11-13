@@ -1,18 +1,24 @@
-# Build outputs
-build/
-*/build/
-.gradle/
-.kotlin/
-local.properties
 *.iml
-.idea/
-
-# Runtime payloads: binaries fetched by scripts/fetch-runtime-payloads.sh
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build
+/app/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+*.jks
+*.keystore
+app/google-services.json
+/app/release
+/scratch
+*.apk
+*.aab
+devtools/dashboard/node_modules/
+devtools/dashboard/dist/
+devtools/dashboard/package-lock.json
+*.gguf
 app/src/main/assets/runtime/*
 !app/src/main/assets/runtime/.gitkeep
-
-# Models and logs
-*.gguf
-*.log
-.build-state
-hs_err_pid*.log

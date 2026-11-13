@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">PocketClaw</string>
+    <!-- Replace with your OAuth *web* client id. See docs/BUILD.md -->
+    <string name="default_web_client_id" translatable="false">REPLACE_WITH_YOUR_WEB_CLIENT_ID</string>
+    <string name="splash_tagline">agent runtime, pocket sized</string>
+
+    <string name="bootstrap_title">Preparing your runtime</string>
+    <string name="bootstrap_subtitle">One tap installs the Linux userland, the agent bundle and the offline toolset.</string>
+    <string name="bootstrap_start">Download and install</string>
+    <string name="bootstrap_retry">Retry failed component</string>
+    <string name="bootstrap_verify">Verifying checksums…</string>
+    <string name="bootstrap_ready">Runtime ready</string>
+
+    <string name="auth_title">Sign in to continue</string>
+    <string name="auth_body">Your session and provider keys stay on this device, encrypted.</string>
+    <string name="auth_google">Continue with Google</string>
+    <string name="auth_skip">Use without an account</string>
+
+    <string name="chat_hint">Ask anything…</string>
+    <string name="chat_new">New chat</string>
+    <string name="chat_history">Chats</string>
+    <string name="chat_empty">No messages yet. Describe a task and the agent will plan, run tools and report back.</string>
+    <string name="chat_stop">Stop</string>
+
+    <string name="settings_title">Settings</string>
+    <string name="settings_providers">Model providers</string>
+    <string name="settings_storage">Storage</string>
+    <string name="settings_agent">Agent behaviour</string>
+    <string name="settings_about">About and licences</string>
+    <string name="settings_version_hint">Version</string>
+
+    <string name="vault_title">Developer access</string>
+    <string name="vault_problem">Solve the problem set. The five answers, each padded to nine digits and followed by a five digit checksum, form the access phrase.</string>
+    <string name="vault_phrase_hint">50-character access phrase</string>
+    <string name="vault_unlock">Unlock</string>
+    <string name="vault_wrong">Phrase rejected.</string>
+    <string name="vault_locked_note">Advanced settings stay locked. There is no prompt based shortcut.</string>
+
+    <string name="history_title">Recent chats</string>
+    <string name="history_limit">Only the four most recent chats are kept.</string>
+    <string name="history_clear">Clear all</string>
+</resources>
