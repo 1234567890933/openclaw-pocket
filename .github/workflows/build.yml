@@ -1,0 +1,87 @@
+name: Build APK
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      # The tree lives in the release archive: 193 source files could not be pushed
+      # through the API from the environment that produced them. This step is the
+      # bridge, and it is deliberately explicit rather than clever.
+      - name: Materialise source tree
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG=$(gh release list -R "${{ github.repository }}" -L 1 --json tagName -q '.[0].tagName')
+          echo "source archive from $TAG"
+          mkdir -p /tmp/src
+          gh release download "$TAG" -R "${{ github.repository }}" -p 'source.zip' -D /tmp/src --clobber
+          unzip -q /tmp/src/source.zip -d /tmp/src/x
+          cp -a /tmp/src/x/OpenClaudeMobile/. ./
+          ls
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install SDK packages
+        run: sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "ndk;27.0.12077973" "cmake;3.22.1"
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('**/*.gradle.kts', 'gradle/libs.versions.toml') }}
+
+      - name: Fetch runtime payloads
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          chmod +x scripts/fetch-runtime-payloads.sh
+          ./scripts/fetch-runtime-payloads.sh
+
+      - name: Unit tests
+        run: gradle :core:testDebugUnitTest --no-daemon --stacktrace
+
+      - name: Build debug APK
+        run: gradle :app:assembleDebug --no-daemon --stacktrace
+
+      - name: Build release APK
+        run: gradle :app:assembleRelease --no-daemon --stacktrace
+
+      - name: Collect artefacts
+        run: |
+          mkdir -p out
+          cp app/build/outputs/apk/debug/app-debug.apk out/openclaw-pocket-debug.apk || true
+          find app/build/outputs/apk/release -name '*.apk' -exec cp {} out/openclaw-pocket-release.apk \; || true
+          ls -lh out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apk
+          path: out/*.apk
+
+      - name: Attach to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG=$(gh release list -R "${{ github.repository }}" -L 1 --json tagName -q '.[0].tagName')
+          gh release upload "$TAG" out/*.apk -R "${{ github.repository }}" --clobber
