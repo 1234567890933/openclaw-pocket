@@ -1,0 +1,71 @@
+name: Sync source into repository
+
+# The source tree lives in the release archive because 193 files could not be pushed
+# through the API from the environment that produced them. That left the repository
+# with a README and a workflow and nothing else — so anyone opening it, human or AI,
+# saw an empty room and reported it as "access blocked".
+#
+# This workflow fixes that permanently: it pulls the archive, unpacks it over the
+# working tree, and commits the result. From then on the code is browsable on GitHub,
+# searchable, and readable by any assistant that can fetch a repository.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  SOURCE_TAG: v0.1.0-beta
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch source archive
+        run: |
+          set -euo pipefail
+          URL="${{ github.server_url }}/${{ github.repository }}/releases/download/${SOURCE_TAG}/source.zip"
+          echo "fetching $URL"
+          curl -fL --retry 3 -o /tmp/source.zip "$URL"
+          mkdir -p /tmp/src && unzip -q /tmp/source.zip -d /tmp/src
+          ls /tmp/src/OpenClaudeMobile | head -20
+
+      - name: Unpack over the working tree
+        run: |
+          set -euo pipefail
+          # .github is deliberately excluded: the workflows in the archive are the
+          # historical ones, and overwriting the live ones mid-run would be a fine way
+          # to delete the very job doing the copy.
+          rsync -a \
+            --exclude '.git' \
+            --exclude '.github' \
+            --exclude 'build' \
+            --exclude '*/build' \
+            --exclude '.gradle' \
+            --exclude 'app/src/main/assets/runtime/*' \
+            /tmp/src/OpenClaudeMobile/ ./
+          echo "--- files now in the tree ---"
+          find . -path ./.git -prune -o -type f -print | wc -l
+
+      - name: Commit
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "nothing to commit — tree already in sync"
+          else
+            git commit -m "Import source tree from ${SOURCE_TAG}
+
+              The repository now contains the actual code, not only the CI that builds it.
+              This is what makes the project readable on GitHub — and readable by an
+              assistant that is asked to review it."
+            git push
+          fi
