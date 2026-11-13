@@ -15,7 +15,7 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
 
@@ -34,7 +34,6 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      # AGP 8.7.3 will not load under the runner's Gradle 9; pin what the project uses.
       - name: Install Gradle ${{ env.GRADLE_VERSION }}
         run: |
           set -euo pipefail
@@ -62,9 +61,6 @@ jobs:
           yes | sdkmanager --licenses > /dev/null || true
           sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "ndk;27.0.12077973" "cmake;3.22.1"
 
-      # assembleRelease signs with the debug keystore by default, which exists on a
-      # developer machine and never on a fresh runner. That is why the debug APK built
-      # and the release one did not.
       - name: Create signing keystore
         run: |
           set -euo pipefail
@@ -76,7 +72,6 @@ jobs:
               -keyalg RSA -keysize 2048 -validity 10000 \
               -dname "CN=Android Debug,O=Android,C=US"
           fi
-          ls -l "$HOME/.android/debug.keystore"
 
       - name: Cache Gradle
         uses: actions/cache@v4
@@ -94,21 +89,30 @@ jobs:
       - name: Unit tests
         run: gradle :core:testDebugUnitTest --no-daemon --stacktrace
 
-      - name: Build debug APK
+      - name: Build debug APKs (one per ABI)
         run: gradle :app:assembleDebug --no-daemon --stacktrace
 
-      - name: Build release APK
+      - name: Build release APKs (one per ABI)
         continue-on-error: true
         run: gradle :app:assembleRelease --no-daemon --stacktrace
 
-      # Publish whatever exists. A debug APK that installs beats a red pipeline with
-      # nothing attached to it.
+      # The payloads are aarch64 binaries. Only the arm64 build can run the gateway, so
+      # only that one gets them; the others stay small and say what they can do.
       - name: Collect artefacts
         if: always()
         run: |
+          set -euo pipefail
           mkdir -p out
-          cp app/build/outputs/apk/debug/app-debug.apk out/pocketclaw-${SOURCE_TAG}-debug.apk 2>/dev/null || true
-          find app/build/outputs/apk/release -name '*.apk' -exec cp {} out/pocketclaw-${SOURCE_TAG}-release.apk \; 2>/dev/null || true
+          find app/build/outputs/apk/debug -name '*.apk' | while read -r f; do
+            abi=$(basename "$f" | sed -E 's/.*-(arm64-v8a|armeabi-v7a|x86_64)-debug\.apk/\1/')
+            [ "$abi" = "$(basename "$f")" ] && abi="universal"
+            cp "$f" "out/pocketclaw-${SOURCE_TAG}-${abi}-debug.apk"
+          done
+          find app/build/outputs/apk/release -name '*.apk' 2>/dev/null | while read -r f; do
+            abi=$(basename "$f" | sed -E 's/.*-(arm64-v8a|armeabi-v7a|x86_64)-release\.apk/\1/')
+            [ "$abi" = "$(basename "$f")" ] && abi="universal"
+            cp "$f" "out/pocketclaw-${SOURCE_TAG}-${abi}-release.apk"
+          done
           ls -lh out
 
       - uses: actions/upload-artifact@v4
