@@ -1,0 +1,5 @@
+{
+  "name": "OpenClaw Pocket",
+  "version": "1.0.4",
+  "note": "The full source tree is attached to each release as source.zip. This repository hosts the CI that builds it and the releases it produces."
+}

@@ -1,0 +1,18 @@
+# Build outputs
+build/
+*/build/
+.gradle/
+.kotlin/
+local.properties
+*.iml
+.idea/
+
+# Runtime payloads: binaries fetched by scripts/fetch-runtime-payloads.sh
+app/src/main/assets/runtime/*
+!app/src/main/assets/runtime/.gitkeep
+
+# Models and logs
+*.gguf
+*.log
+.build-state
+hs_err_pid*.log
