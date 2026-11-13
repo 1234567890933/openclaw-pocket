@@ -8,6 +8,9 @@ on:
 permissions:
   contents: write
 
+env:
+  SOURCE_TAG: v0.1.0-beta
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -16,19 +19,19 @@ jobs:
       - uses: actions/checkout@v4
 
       # The tree lives in the release archive: 193 source files could not be pushed
-      # through the API from the environment that produced them. This step is the
-      # bridge, and it is deliberately explicit rather than clever.
+      # through the API from the environment that produced them.
+      #
+      # Deterministic URL, not `gh release list`: the first two runs died in nine
+      # seconds because that command was parsed before the release existed. A fixed
+      # URL either works or fails loudly, and it fails with an HTTP code.
       - name: Materialise source tree
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          TAG=$(gh release list -R "${{ github.repository }}" -L 1 --json tagName -q '.[0].tagName')
-          echo "source archive from $TAG"
-          mkdir -p /tmp/src
-          gh release download "$TAG" -R "${{ github.repository }}" -p 'source.zip' -D /tmp/src --clobber
-          unzip -q /tmp/src/source.zip -d /tmp/src/x
-          cp -a /tmp/src/x/OpenClaudeMobile/. ./
+          URL="${{ github.server_url }}/${{ github.repository }}/releases/download/${SOURCE_TAG}/source.zip"
+          echo "fetching $URL"
+          curl -fL --retry 3 -o /tmp/source.zip "$URL"
+          mkdir -p /tmp/src && unzip -q /tmp/source.zip -d /tmp/src
+          cp -a /tmp/src/OpenClaudeMobile/. ./
           ls
 
       - name: Set up JDK 17
@@ -70,8 +73,8 @@ jobs:
       - name: Collect artefacts
         run: |
           mkdir -p out
-          cp app/build/outputs/apk/debug/app-debug.apk out/openclaw-pocket-debug.apk || true
-          find app/build/outputs/apk/release -name '*.apk' -exec cp {} out/openclaw-pocket-release.apk \; || true
+          cp app/build/outputs/apk/debug/app-debug.apk out/pocketclaw-${SOURCE_TAG}-debug.apk || true
+          find app/build/outputs/apk/release -name '*.apk' -exec cp {} out/pocketclaw-${SOURCE_TAG}-release.apk \; || true
           ls -lh out
 
       - uses: actions/upload-artifact@v4
@@ -82,6 +85,4 @@ jobs:
       - name: Attach to release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          TAG=$(gh release list -R "${{ github.repository }}" -L 1 --json tagName -q '.[0].tagName')
-          gh release upload "$TAG" out/*.apk -R "${{ github.repository }}" --clobber
+        run: gh release upload "${SOURCE_TAG}" out/*.apk -R "${{ github.repository }}" --clobber
