@@ -26,7 +26,6 @@ jobs:
           curl -fL --retry 3 -o /tmp/source.zip "$URL"
           mkdir -p /tmp/src && unzip -q /tmp/source.zip -d /tmp/src
           cp -a /tmp/src/OpenClaudeMobile/. ./
-          ls
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -41,7 +40,6 @@ jobs:
             "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip"
           unzip -q /tmp/gradle.zip -d /opt
           echo "/opt/gradle-${GRADLE_VERSION}/bin" >> "$GITHUB_PATH"
-          gradle --version
 
       - name: Install Android SDK
         run: |
@@ -65,13 +63,11 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$HOME/.android"
-          if [ ! -f "$HOME/.android/debug.keystore" ]; then
-            keytool -genkeypair -v \
-              -keystore "$HOME/.android/debug.keystore" \
-              -storepass android -alias androiddebugkey -keypass android \
-              -keyalg RSA -keysize 2048 -validity 10000 \
-              -dname "CN=Android Debug,O=Android,C=US"
-          fi
+          [ -f "$HOME/.android/debug.keystore" ] || keytool -genkeypair -v \
+            -keystore "$HOME/.android/debug.keystore" \
+            -storepass android -alias androiddebugkey -keypass android \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US"
 
       - name: Cache Gradle
         uses: actions/cache@v4
@@ -80,38 +76,50 @@ jobs:
           key: gradle-${{ env.GRADLE_VERSION }}-${{ hashFiles('**/*.gradle.kts', 'gradle/libs.versions.toml') }}
 
       - name: Fetch runtime payloads
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           chmod +x scripts/fetch-runtime-payloads.sh
           ./scripts/fetch-runtime-payloads.sh
 
+      # The APK once shipped claiming to bundle Node and did not: the fetch script left a
+      # 118-byte stub behind, the `[ -s ]` guard treated it as done, and the phone failed
+      # at first run with FileNotFoundException. This step is the guard against that.
+      - name: Assert bundled payloads are real
+        run: |
+          set -euo pipefail
+          fail=0
+          check() {
+            if [ -s "$1" ] && [ "$(stat -c %s "$1")" -ge "$2" ]; then
+              echo "ok   $1 ($(du -h "$1" | cut -f1))"
+            else
+              echo "MISSING or too small: $1"; fail=1
+            fi
+          }
+          check app/src/main/assets/runtime/node-arm64.pkg   20000000
+          check app/src/main/assets/runtime/proot-arm64       200000
+          check app/src/main/assets/runtime/openclaw-bundle.pkg 20000000
+          exit $fail
+
       - name: Unit tests
         run: gradle :core:testDebugUnitTest --no-daemon --stacktrace
 
-      - name: Build debug APKs (one per ABI)
+      - name: Build debug APKs
         run: gradle :app:assembleDebug --no-daemon --stacktrace
 
-      - name: Build release APKs (one per ABI)
+      - name: Build release APKs
         continue-on-error: true
         run: gradle :app:assembleRelease --no-daemon --stacktrace
 
-      # The payloads are aarch64 binaries. Only the arm64 build can run the gateway, so
-      # only that one gets them; the others stay small and say what they can do.
       - name: Collect artefacts
         if: always()
         run: |
           set -euo pipefail
           mkdir -p out
-          find app/build/outputs/apk/debug -name '*.apk' | while read -r f; do
-            abi=$(basename "$f" | sed -E 's/.*-(arm64-v8a|armeabi-v7a|x86_64)-debug\.apk/\1/')
-            [ "$abi" = "$(basename "$f")" ] && abi="universal"
-            cp "$f" "out/pocketclaw-${SOURCE_TAG}-${abi}-debug.apk"
-          done
-          find app/build/outputs/apk/release -name '*.apk' 2>/dev/null | while read -r f; do
-            abi=$(basename "$f" | sed -E 's/.*-(arm64-v8a|armeabi-v7a|x86_64)-release\.apk/\1/')
-            [ "$abi" = "$(basename "$f")" ] && abi="universal"
-            cp "$f" "out/pocketclaw-${SOURCE_TAG}-${abi}-release.apk"
+          for d in debug release; do
+            find app/build/outputs/apk/$d -name '*.apk' 2>/dev/null | while read -r f; do
+              abi=$(basename "$f" | sed -E 's/.*-(arm64-v8a|armeabi-v7a|x86_64)-[a-z]+\.apk/\1/')
+              [ "$abi" = "$(basename "$f")" ] && abi="universal"
+              cp "$f" "out/pocketclaw-${SOURCE_TAG}-${abi}-${d}.apk"
+            done
           done
           ls -lh out
 
@@ -131,6 +139,4 @@ jobs:
           files=(out/*.apk)
           if [ ${#files[@]} -gt 0 ]; then
             gh release upload "${SOURCE_TAG}" "${files[@]}" -R "${{ github.repository }}" --clobber
-          else
-            echo "no apk produced"
           fi
