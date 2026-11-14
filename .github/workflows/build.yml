@@ -20,8 +20,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # The archive is published in three parts: a single 67 MB asset would not upload
-      # from the authoring environment. Concatenating restores the exact zip.
       - name: Materialise source tree
         run: |
           set -euo pipefail
@@ -34,7 +32,24 @@ jobs:
           unzip -tq /tmp/source.zip
           mkdir -p /tmp/src && unzip -q /tmp/source.zip -d /tmp/src
           cp -a /tmp/src/OpenClaudeMobile/. ./
-          echo "files: $(find . -path ./.git -prune -o -type f -print | wc -l)"
+
+      # Scope.cancel() is an extension function and needs its own import; Job.cancel()
+      # is a member and does not. That difference has now cost two build cycles, so the
+      # import is enforced here rather than trusted to survive an archive refresh.
+      - name: Ensure coroutine cancel import
+        run: |
+          set -euo pipefail
+          for f in \
+            core/src/main/java/com/openclaude/mobile/data/runtime/DownloadQueue.kt \
+            core/src/main/java/com/openclaude/mobile/perf/ThermalGovernor.kt ; do
+            if [ -f "$f" ] && ! grep -q 'import kotlinx.coroutines.cancel' "$f"; then
+              sed -i 's/^import kotlinx.coroutines.SupervisorJob$/import kotlinx.coroutines.SupervisorJob\nimport kotlinx.coroutines.cancel/' "$f"
+              echo "patched $f"
+            fi
+          done
+          grep -n 'kotlinx.coroutines.cancel' \
+            core/src/main/java/com/openclaude/mobile/data/runtime/DownloadQueue.kt \
+            core/src/main/java/com/openclaude/mobile/perf/ThermalGovernor.kt
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
