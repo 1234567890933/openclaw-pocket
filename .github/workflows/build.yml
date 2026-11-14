@@ -10,6 +10,7 @@ permissions:
 
 env:
   SOURCE_TAG: v0.1.0-beta
+  APP_VERSION: "0.1.1-beta"
   GRADLE_VERSION: "8.11.1"
 
 jobs:
@@ -80,9 +81,6 @@ jobs:
           chmod +x scripts/fetch-runtime-payloads.sh
           ./scripts/fetch-runtime-payloads.sh
 
-      # The APK once shipped claiming to bundle Node and did not: the fetch script left a
-      # 118-byte stub behind, the `[ -s ]` guard treated it as done, and the phone failed
-      # at first run with FileNotFoundException. This step is the guard against that.
       - name: Assert bundled payloads are real
         run: |
           set -euo pipefail
@@ -109,19 +107,23 @@ jobs:
         continue-on-error: true
         run: gradle :app:assembleRelease --no-daemon --stacktrace
 
+      # `find` exits non-zero when its directory does not exist, and under `set -e`
+      # that killed the whole step on the first run that produced no release APK.
       - name: Collect artefacts
         if: always()
         run: |
-          set -euo pipefail
           mkdir -p out
           for d in debug release; do
-            find app/build/outputs/apk/$d -name '*.apk' 2>/dev/null | while read -r f; do
+            src="app/build/outputs/apk/$d"
+            [ -d "$src" ] || { echo "no $d output directory"; continue; }
+            find "$src" -name '*.apk' -print0 | while IFS= read -r -d '' f; do
               abi=$(basename "$f" | sed -E 's/.*-(arm64-v8a|armeabi-v7a|x86_64)-[a-z]+\.apk/\1/')
               [ "$abi" = "$(basename "$f")" ] && abi="universal"
-              cp "$f" "out/pocketclaw-${SOURCE_TAG}-${abi}-${d}.apk"
+              cp "$f" "out/pocketclaw-${APP_VERSION}-${abi}-${d}.apk"
             done
           done
-          ls -lh out
+          echo "--- produced ---"
+          ls -lh out || true
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -139,4 +141,6 @@ jobs:
           files=(out/*.apk)
           if [ ${#files[@]} -gt 0 ]; then
             gh release upload "${SOURCE_TAG}" "${files[@]}" -R "${{ github.repository }}" --clobber
+          else
+            echo "no apk produced"
           fi
